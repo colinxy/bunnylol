@@ -1,12 +1,12 @@
 from aiohttp import web
-import commands
+from commands import Command
 
 
-def help(request):
+async def help(request):
     return web.Response(text='help')
 
 
-def history(request):
+async def history(request):
     return web.Response(text='history')
 
 
@@ -16,11 +16,11 @@ async def query(request):
         return web.HTTPFound('help')
 
     query = query.split()
-    command = commands.get_command(query[0])
-    if command is None:
-        return web.HTTPFound('help')
+    cmd = Command.from_name(query[0])
+    if not cmd:
+        cmd = Command.fall_back(skip_first=False)
 
-    return command(query[1:], request)
+    return cmd(query, request)
 
 
 def make_app():
@@ -33,9 +33,9 @@ def make_app():
     return app
 
 
-if __name__ == '__main__':
-    app = make_app()
+app = make_app()
 
+if __name__ == '__main__':
     # debug
     import aiohttp_debugtoolbar
     aiohttp_debugtoolbar.setup(app, intercept_redirects=False)
