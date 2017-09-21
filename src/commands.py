@@ -75,7 +75,7 @@ class HistoryCommand(Command):
     ]
 
     def __call__(self, _args, request):
-        return redirect_to(request, 'history')
+        return redirect_to('history', request)
 
 
 class RedirectCommand(Command):
