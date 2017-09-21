@@ -2,6 +2,20 @@ from aiohttp import web
 import shlex
 from urllib.parse import quote as url_quote
 
+from helpers import redirect_help, redirect_to
+
+
+def execute_query(query: str, request):
+    query = query.split()
+    if not query:
+        return redirect_help(request)
+
+    cmd = Command.from_name(query[0])
+    if not cmd:
+        cmd = Command.fall_back(skip_first=False)
+
+    return cmd(query, request)
+
 
 class Command:
     aliases = []
@@ -36,6 +50,12 @@ class Command:
             setattr(self, key, val)
 
 
+class ResolverCommand(Command):
+
+    def __call__(self, args, request):
+        pass
+
+
 class HelpCommand(Command):
     aliases = [
         'help',
@@ -43,10 +63,9 @@ class HelpCommand(Command):
     ]
 
     def __call__(self, args, request):
-        url = request.app.router['help'].url_for().with_query(
-            {'q': ' '.join(args)},
-        )
-        return web.HTTPFound(url)
+        return redirect_help(request, query={
+            'q': ' '.join(args),
+        })
 
 
 class HistoryCommand(Command):
@@ -56,14 +75,13 @@ class HistoryCommand(Command):
     ]
 
     def __call__(self, _args, request):
-        url = request.app.router['history'].url_for()
-        return web.HTTPFound(url)
+        return redirect_to(request, 'history')
 
 
 class RedirectCommand(Command):
     query_key = 'q'
 
-    def __init__(self, skip_first=True):
+    def __init__(self, *, skip_first=True):
         self.skip_first = skip_first
 
     def __call__(self, args, _request):
@@ -116,6 +134,7 @@ class ShellCommand(Command):
         peername = request.transport.get_extra_info('peername')
         print(peername)
 
-    def __call__(self, args, request):
-        cmdline = ' '.join(args)
-        args = shlex.split(cmdline)
+    def __call__(self, query_str, request):
+        args = shlex.split(query_str)
+        if not args:
+            pass

@@ -1,30 +1,17 @@
 from aiohttp import web
-from commands import Command
-
-
-async def help(request):
-    return web.Response(text='help')
-
-
-async def history(request):
-    return web.Response(text='history')
+from commands import execute_query
+from helpers import help
+from history import history
+from middlewares import middleware_factories
 
 
 async def query(request):
-    query = request.query.get('q')
-    if not query:
-        return web.HTTPFound('help')
-
-    query = query.split()
-    cmd = Command.from_name(query[0])
-    if not cmd:
-        cmd = Command.fall_back(skip_first=False)
-
-    return cmd(query, request)
+    query = request.query.get('q', '')
+    return execute_query(query, request)
 
 
 def make_app():
-    app = web.Application()
+    app = web.Application(middlewares=middleware_factories)
 
     app.router.add_get('/', query, name='query')
     app.router.add_get('/help', help, name='help')
