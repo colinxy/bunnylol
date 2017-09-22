@@ -34,4 +34,4 @@ async def init_db(app, db_configs):
 
 async def cleanup_db(app):
     if app.get('db_engine'):
-        app['db_engine'].close()
+        app['db_engine'].dispose()
