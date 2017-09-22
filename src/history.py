@@ -1,16 +1,24 @@
 from aiohttp import web
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-Base = declarative_base()
 
-
-class HistoryItem(Base):
-    __tablename__ = 'history'
-
-    id = Column(Integer, primary_key=True)
-    cmd = Column(String)
-    full_cmd = Column(String)
+from database import history_tbl
 
 
 async def history(request):
     return web.Response(text='history')
+
+
+async def history_middleware_factory(app, handler):
+    async def history_middleware(request):
+        response = await handler(request)
+
+        db = request.app['db']
+        # queries should register request['cmd'], request['fullcmd']
+        cmd = request.get('cmd')
+        if cmd:
+            db.execute(history_tbl.insert().values(
+                cmd=cmd,
+                fullcmd=request.get('fullcmd', ''),
+            ))
+        return response
+
+    return history_middleware

@@ -6,6 +6,7 @@ from helpers import redirect_help, redirect_to
 
 
 def execute_query(query: str, request):
+    request['fullcmd'] = query
     query = query.split()
     if not query:
         return redirect_help(request)
@@ -14,7 +15,10 @@ def execute_query(query: str, request):
     if not cmd:
         cmd = Command.fall_back(skip_first=False)
 
-    return cmd(query, request)
+    cmd.pre_call_hook(request)
+    result = cmd(query, request)
+    cmd.post_call_hook(request)
+    return result
 
 
 class Command:
@@ -33,7 +37,7 @@ class Command:
     def fall_back(cls, **kwargs):
         if cls._default_cmd:
             return cls._default_cmd(**kwargs)
-        return HelpCommand(**kwargs)
+        return Help(**kwargs)
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -49,14 +53,23 @@ class Command:
         for key, val in kwargs.items():
             setattr(self, key, val)
 
+    def pre_call_hook(self, request, *args, **kwargs):
+        # as a result, non abstract commands should not have
+        # `Command' in the class name, e.g. Help, not HelpCommand
+        request['cmd'] = self.__class__.__name__.lower()
+
+    def post_call_hook(self, request, *args, **kwargs):
+        pass
+
 
 class ResolverCommand(Command):
 
     def __call__(self, args, request):
+        # TODO : delegate command fall back here
         pass
 
 
-class HelpCommand(Command):
+class Help(Command):
     aliases = [
         'help',
         'h',
@@ -68,7 +81,7 @@ class HelpCommand(Command):
         })
 
 
-class HistoryCommand(Command):
+class History(Command):
     aliases = [
         'history',
         'hist',

@@ -1,9 +1,4 @@
-
-async def history_middleware_factory(app, handler):
-    async def history_middleware(request):
-        return await handler(request)
-
-    return history_middleware
+from history import history_middleware_factory
 
 
 middleware_factories = [
