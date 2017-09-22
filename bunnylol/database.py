@@ -23,8 +23,15 @@ class HistoryItem(Base):
 history_tbl = HistoryItem.__table__
 
 
-async def init_db():
+async def init_db(app, db_configs):
     # debug with echo=True
-    engine = create_engine('sqlite:///bunnylol.db', echo=True)
+    dsn = db_configs.pop('dsn')
+    engine = create_engine(dsn, **db_configs)
     Base.metadata.create_all(engine)
-    return engine.connect()
+
+    app['db_engine'] = engine
+
+
+async def cleanup_db(app):
+    if app.get('db_engine'):
+        app['db_engine'].close()
