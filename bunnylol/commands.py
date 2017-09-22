@@ -2,7 +2,7 @@ from aiohttp import web
 import shlex
 from urllib.parse import quote as url_quote
 
-from helpers import redirect_help, redirect_to
+from .helpers import redirect_help, redirect_to
 
 
 def execute_query(query: str, request):

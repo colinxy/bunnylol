@@ -1,6 +1,6 @@
 from aiohttp import web
 
-from database import history_tbl
+from .database import history_tbl
 
 
 async def history(request):
