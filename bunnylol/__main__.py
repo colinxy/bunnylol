@@ -27,7 +27,7 @@ logger.addHandler(ch)
 app = make_app(
     debug=True,
     db_configs={
-        # 'dialect': 'sqlite',
+        'dialect': 'sqlite',
         'dsn': 'sqlite:///bunnylol.db',
         'echo': False,
     },

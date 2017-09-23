@@ -1,8 +1,12 @@
+import importlib
+import logging
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 
 from .db.common import create_tables
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -21,15 +25,30 @@ class HistoryItem(Base):
 history_tbl = HistoryItem.__table__
 
 
-async def init_db(app, db_configs):
-    # debug with echo=True
-    dsn = db_configs.pop('dsn')
-    from .db.sqlite import create_engine
-    engine = await create_engine(dsn, **db_configs)
-    await create_tables(engine, Base.metadata.sorted_tables)
-    # Base.metadata.create_all(engine)
+async def _init_db(db_configs):
+    dialect = db_configs.pop('dialect', 'sqlite')
+    try:
+        create_engine = getattr(
+            importlib.import_module(f'.db.{dialect}', package='bunnylol'),
+            'create_engine',
+        )
+    except ImportError:
+        raise ValueError(f'Db dialect {dialect} not found')
 
-    app['db_engine'] = engine
+    dsn = db_configs.pop('dsn')
+    engine = await create_engine(dsn, **db_configs)
+    logger.info(f'Connected to DB {engine.url}')
+
+    create_table = db_configs.pop('create_table', False)
+    if create_table:
+        await create_tables(engine, Base.metadata.sorted_tables)
+
+    return engine
+
+
+async def init_db(app, db_configs):
+    app['db_engine'] = await _init_db(db_configs)
+    app.on_cleanup.append(cleanup_db)
 
 
 async def cleanup_db(app):

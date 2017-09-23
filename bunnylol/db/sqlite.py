@@ -24,12 +24,18 @@ class AioEngine(Engine):
         connection.__class__ = AioConnection
         return connection
 
+    def release(self, conn):
+        pass
+
     async def execute(self, *args, **kwargs):
         result = super().execute(*args, **kwargs)
         return aiter(result)
 
     def close(self):
         return super().dispose()
+
+    def terminate(self):
+        return self.close()
 
     async def wait_closed(self):
         return
@@ -43,6 +49,7 @@ class AioEngine(Engine):
 
 class AioConnection(Connection):
     async def execute(self, *args, **kwargs):
+        # TODO: put context manager around connection
         result = super().execute(*args, **kwargs)
         return aiter(result)
 

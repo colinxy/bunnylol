@@ -2,7 +2,7 @@ import asyncio
 from aiohttp import web
 
 from .commands import execute_query
-from .database import init_db, cleanup_db
+from .database import init_db
 from .helpers import help
 from .history import history
 from .middlewares import middleware_factories
@@ -27,6 +27,5 @@ def make_app(**configs):
     app.router.add_get('/history', history, name='history')
 
     loop.run_until_complete(init_db(app, configs['db_configs']))
-    app.on_cleanup.append(cleanup_db)
 
     return app
