@@ -1,5 +1,5 @@
 
 from bunnylol import make_app
+from settings import settings
 
-# TODO : won't run, need to read configs
-app = make_app()
+app = make_app(**settings)

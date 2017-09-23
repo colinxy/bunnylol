@@ -9,7 +9,7 @@ GOAL
 
 API
 
-engine = await create_engine(dsn)
+engine = await create_engine(url)
 
 async with engine.acquire() as conn:
     await conn.execute(tbl.insert().values(val='abc'))

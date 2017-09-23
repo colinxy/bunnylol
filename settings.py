@@ -1,7 +1,6 @@
 
 settings = {
     'db_configs': {
-        'dsn': 'sqlite://',
-        'echo': False,
-    }
+        'url': 'postgresql://localhost/bunnylol',
+    },
 }

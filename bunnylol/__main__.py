@@ -28,7 +28,7 @@ app = make_app(
     debug=True,
     db_configs={
         'dialect': 'sqlite',
-        'dsn': 'sqlite:///bunnylol.db',
+        'url': 'sqlite:///bunnylol.db',
         'echo': False,
     },
 )

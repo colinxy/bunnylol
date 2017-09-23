@@ -35,8 +35,8 @@ async def _init_db(db_configs):
     except ImportError:
         raise ValueError(f'Db dialect {dialect} not found')
 
-    dsn = db_configs.pop('dsn')
-    engine = await create_engine(dsn, **db_configs)
+    url = db_configs.pop('url')
+    engine = await create_engine(url, **db_configs)
     logger.info(f'Connected to DB {engine.url}')
 
     create_table = db_configs.pop('create_table', False)
