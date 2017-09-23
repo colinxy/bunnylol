@@ -15,8 +15,8 @@ async def history_middleware_factory(app, handler):
         # queries should register request['cmd'], request['fullcmd']
         cmd = request.get('cmd')
         if cmd:
-            with db_engine.connect() as conn:
-                conn.execute(history_tbl.insert().values(
+            async with db_engine.connect() as conn:
+                await conn.execute(history_tbl.insert().values(
                     cmd=cmd,
                     fullcmd=request.get('fullcmd', ''),
                 ))

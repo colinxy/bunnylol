@@ -1,0 +1,19 @@
+async adaptors for several db engines
+
+GOAL
+ - cursor support (default)
+   - connect
+ - transaction support (TODO)
+   - begin
+
+
+API
+
+engine = await create_engine(dsn)
+
+async with engine.connect() as conn:
+    await conn.execute(tbl.insert().values(val='abc'))
+    async for row in conn.execute(tbl.select()):
+        print(row.id, row.val)
+
+engine.close()

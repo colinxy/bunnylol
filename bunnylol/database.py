@@ -1,6 +1,6 @@
 # TODO : make it plugable, so that other engines can be used
 # TODO : replace with aiopg
-from sqlalchemy import create_engine
+# from sqlalchemy import create_engine
 
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
@@ -26,7 +26,9 @@ history_tbl = HistoryItem.__table__
 async def init_db(app, db_configs):
     # debug with echo=True
     dsn = db_configs.pop('dsn')
-    engine = create_engine(dsn, **db_configs)
+    from .db.sqlite import create_engine
+    engine = await create_engine(dsn, **db_configs)
+    # TODO : use async with this
     Base.metadata.create_all(engine)
 
     app['db_engine'] = engine
@@ -34,4 +36,4 @@ async def init_db(app, db_configs):
 
 async def cleanup_db(app):
     if app.get('db_engine'):
-        app['db_engine'].dispose()
+        await app['db_engine'].close()
