@@ -19,13 +19,20 @@ class aiter:
 
 
 class AioEngine(Engine):
-    def connect(self, **kwargs):
+    def acquire(self, **kwargs):
         connection = super().connect(**kwargs)
         connection.__class__ = AioConnection
         return connection
 
-    async def close(self):
+    async def execute(self, *args, **kwargs):
+        result = super().execute(*args, **kwargs)
+        return aiter(result)
+
+    def close(self):
         return super().dispose()
+
+    async def wait_closed(self):
+        return
 
     async def __aenter__(self):
         return super().__enter__()

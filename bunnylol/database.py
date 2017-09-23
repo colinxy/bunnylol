@@ -1,10 +1,9 @@
-# TODO : make it plugable, so that other engines can be used
-# TODO : replace with aiopg
-# from sqlalchemy import create_engine
-
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
+
+from .db.common import create_tables
+
 Base = declarative_base()
 
 
@@ -15,7 +14,6 @@ class HistoryItem(Base):
     cmd = Column(String)
     fullcmd = Column(String)
 
-    # TODO : verify time stamp is calculated at DB side
     # TODO : use utc time
     time_created = Column(DateTime, server_default=func.now())
 
@@ -28,12 +26,14 @@ async def init_db(app, db_configs):
     dsn = db_configs.pop('dsn')
     from .db.sqlite import create_engine
     engine = await create_engine(dsn, **db_configs)
-    # TODO : use async with this
-    Base.metadata.create_all(engine)
+    await create_tables(engine, Base.metadata.sorted_tables)
+    # Base.metadata.create_all(engine)
 
     app['db_engine'] = engine
 
 
 async def cleanup_db(app):
-    if app.get('db_engine'):
-        await app['db_engine'].close()
+    db_engine = app.get('db_engine')
+    if db_engine:
+        db_engine.close()
+        await db_engine.wait_closed()
