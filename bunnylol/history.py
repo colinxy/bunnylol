@@ -14,7 +14,8 @@ async def history_middleware_factory(app, handler):
         db_engine = request.app['db_engine']
         # queries should register request['cmd'], request['fullcmd']
         cmd = request.get('cmd')
-        if cmd:
+        # hardcode DNT command: do not record in history
+        if cmd and cmd != 'dnt':
             async with db_engine.acquire() as conn:
                 await conn.execute(history_tbl.insert().values(
                     cmd=cmd,

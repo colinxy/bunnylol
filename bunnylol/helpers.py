@@ -1,6 +1,15 @@
 from aiohttp import web
 
 
+def split2(query: str):
+    splitted = query.split(maxsplit=1)
+    if len(splitted) == 0:
+        return '', ''
+    if len(splitted) == 1:
+        return splitted[0], ''
+    return splitted
+
+
 def redirect_to(resource_name, request, query=None):
     url = request.app.router[resource_name].url_for()
     if query:

@@ -1,0 +1,7 @@
+Next gen bunnylol with asyncio
+
+To run in debug mode
+
+    ipython3 -im bunnylol
+
+To run in "production", use app.py
