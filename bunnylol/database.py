@@ -17,6 +17,7 @@ class HistoryItem(Base):
     __tablename__ = 'history'
 
     id = Column(Integer, primary_key=True)
+    # TODO : give varchar length e.g. String(10)
     cmd = Column(String)
     fullcmd = Column(String)
 
@@ -34,8 +35,8 @@ async def _init_db(db_configs):
             importlib.import_module(f'.db.{dialect}', package='bunnylol'),
             'create_engine',
         )
-    except ImportError:
-        raise ValueError(f'Db dialect {dialect} not found')
+    except (ImportError, AttributeError):
+        raise ValueError(f'DB dialect {dialect} not found')
 
     url = db_configs.pop('url')
     engine = await create_engine(url, **db_configs)

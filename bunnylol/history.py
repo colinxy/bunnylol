@@ -7,6 +7,12 @@ async def history(request):
     return web.Response(text='history')
 
 
+async def select_history(request):
+    db_engine = request.app['db_engine']
+    async with db_engine.acquire() as conn:
+        return [row async for row in conn.execute(history_tbl.select())]
+
+
 async def history_middleware_factory(app, handler):
     async def history_middleware(request):
         response = await handler(request)

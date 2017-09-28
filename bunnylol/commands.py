@@ -19,7 +19,7 @@ def resolve_command(query: str, **params) -> Union['Command', 'CommandMixin']:
     if not cmd_name:
         return Help()
 
-    cmd_class = Command.from_name(cmd_name)
+    cmd_class = Command.from_name(cmd_name.lower())
     if not cmd_class:
         cmd_class = Command.fallback()
         params['skip_first'] = False
