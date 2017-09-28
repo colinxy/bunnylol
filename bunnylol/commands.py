@@ -27,38 +27,6 @@ def resolve_command(query: str, **params) -> Union['Command', 'CommandMixin']:
     return cmd
 
 
-class Command:
-    aliases: List[str] = []
-    _commands: List[CmdType] = []
-    _command_map: Dict[str, CmdType] = {}
-    _default_cmd: Optional[CmdType] = None
-
-    @classmethod
-    def from_name(cls, name):
-        cmd = cls._command_map.get(name)
-        if cmd:
-            return cmd
-
-    @classmethod
-    def fallback(cls):
-        if cls._default_cmd:
-            return cls._default_cmd
-        return Help
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        Command._commands.append(cls)
-        _cmd_map = Command._command_map
-        for alias in getattr(cls, 'aliases', []):
-            _cmd_map[alias] = cls
-
-        if getattr(cls, 'make_default', False):
-            Command._default_cmd = cls
-
-    def __call__(self, query, request):
-        raise NotImplementedError
-
-
 class CommandMixin:
 
     def call(self, query, request):
@@ -88,6 +56,35 @@ class CommandMixin:
 
     def post_call_hook(self, request):
         pass
+
+
+class Command(CommandMixin):
+    aliases: List[str] = []
+    _commands: List[CmdType] = []
+    _command_map: Dict[str, CmdType] = {}
+    _default_cmd: Optional[CmdType] = None
+
+    @classmethod
+    def from_name(cls, name):
+        cmd = cls._command_map.get(name)
+        if cmd:
+            return cmd
+
+    @classmethod
+    def fallback(cls):
+        if cls._default_cmd:
+            return cls._default_cmd
+        return Help
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        Command._commands.append(cls)
+        _cmd_map = Command._command_map
+        for alias in getattr(cls, 'aliases', []):
+            _cmd_map[alias] = cls
+
+        if getattr(cls, 'make_default', False):
+            Command._default_cmd = cls
 
 
 class RawCommandMixin(CommandMixin):
@@ -120,6 +117,7 @@ class Help(Command):
     aliases = [
         'help',
         'h',
+        'he',
     ]
 
     def __call__(self, args, request):
@@ -138,7 +136,7 @@ class History(Command):
         return redirect_to('history', request)
 
 
-class RedirectCommand(Command, CommandMixin):
+class RedirectCommand(Command):
     query_key = 'q'
 
     def __init__(self, *, skip_first=True):
