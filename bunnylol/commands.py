@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional, Type, TypeVar, Union  # noqa
+from typing import Dict, List, Optional, Type, TypeVar, Tuple, Union  # noqa
 import shlex
 from urllib.parse import quote as url_quote
 
@@ -27,6 +27,15 @@ def resolve_command(query: str, **params) -> Union['Command', 'CommandMixin']:
     return cmd
 
 
+async def execute_query(query: str, request):
+    request['fullcmd'] = query
+    if not query:
+        return redirect_help(request)
+
+    cmd = resolve_command(query)
+    return await cmd(query, request)
+
+
 class CommandMixin:
 
     async def call(self, query, request):
@@ -52,7 +61,8 @@ class CommandMixin:
     async def pre_call_hook(self, request):
         # by convention, non abstract commands should not have
         # `Command' in the class name, e.g. Help, not HelpCommand
-        request['cmd'] = self.__class__.__name__.lower()
+        if not request.get('cmd'):
+            request['cmd'] = self.__class__.__name__.lower()
 
     async def post_call_hook(self, request):
         pass
@@ -99,40 +109,47 @@ class SplitCommandMixin(CommandMixin):
         return query.split()
 
 
+class Split2CommandMixin(CommandMixin):
+
+    def parse(self, query: str, request) -> Tuple[str, str]:
+        return split2(query)
+
+
 class ShlexCommandMixin(CommandMixin):
 
     def parse(self, query: str, request) -> List[str]:
         return shlex.split(query)
 
 
-class DNT(Command):
+class DNT(Command, Split2CommandMixin):
     """Do not track"""
     aliases = ['dnt']
 
-    async def __call__(self, args, request):
-        pass
+    async def call(self, query: Tuple[str, str], request):
+        _, query = query
+        return await execute_query(query, request)
 
 
-class Help(Command):
+class Help(Command, RawCommandMixin):
     aliases = [
         'help',
         'h',
         'he',
     ]
 
-    async def __call__(self, args, request):
+    async def call(self, query, request):
         return redirect_help(request, query={
-            'q': ' '.join(args),
+            'q': query,
         })
 
 
-class History(Command):
+class History(Command, RawCommandMixin):
     aliases = [
         'history',
         'hist',
     ]
 
-    async def __call__(self, _args, request):
+    async def call(self, query, request):
         return redirect_to('history', request)
 
 

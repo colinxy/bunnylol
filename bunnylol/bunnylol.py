@@ -1,7 +1,7 @@
 import asyncio
 from aiohttp import web
 
-from .executors import execute_query
+from .commands import execute_query
 from .database import init_db
 from .helpers import help
 from .history import history
