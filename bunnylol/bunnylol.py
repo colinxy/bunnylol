@@ -10,7 +10,7 @@ from .middlewares import middleware_factories
 
 async def query(request):
     query = request.query.get('q', '')
-    return execute_query(query, request)
+    return await execute_query(query, request)
 
 
 def make_app(**configs):

@@ -29,19 +29,19 @@ def resolve_command(query: str, **params) -> Union['Command', 'CommandMixin']:
 
 class CommandMixin:
 
-    def call(self, query, request):
+    async def call(self, query, request):
         raise NotImplementedError
 
     def parse(self, query: str, request):
         raise NotImplementedError
 
-    def __call__(self, query: str, request):
-        self.pre_call_hook(request)
+    async def __call__(self, query: str, request):
+        await self.pre_call_hook(request)
         try:
             query = self.parse(query, request)
-            result = self.call(query, request)
+            result = await self.call(query, request)
         finally:
-            self.post_call_hook(request)
+            await self.post_call_hook(request)
 
         return result
 
@@ -49,12 +49,12 @@ class CommandMixin:
         for key, val in kwargs.items():
             setattr(self, key, val)
 
-    def pre_call_hook(self, request):
+    async def pre_call_hook(self, request):
         # by convention, non abstract commands should not have
         # `Command' in the class name, e.g. Help, not HelpCommand
         request['cmd'] = self.__class__.__name__.lower()
 
-    def post_call_hook(self, request):
+    async def post_call_hook(self, request):
         pass
 
 
@@ -109,7 +109,7 @@ class DNT(Command):
     """Do not track"""
     aliases = ['dnt']
 
-    def __call__(self, args, request):
+    async def __call__(self, args, request):
         pass
 
 
@@ -120,7 +120,7 @@ class Help(Command):
         'he',
     ]
 
-    def __call__(self, args, request):
+    async def __call__(self, args, request):
         return redirect_help(request, query={
             'q': ' '.join(args),
         })
@@ -132,7 +132,7 @@ class History(Command):
         'hist',
     ]
 
-    def __call__(self, _args, request):
+    async def __call__(self, _args, request):
         return redirect_to('history', request)
 
 
@@ -154,7 +154,7 @@ class RedirectCommand(Command):
 
         return query
 
-    def call(self, query, _request):
+    async def call(self, query, _request):
         url = f'{self.base_url}?{self.query_key}={url_quote(query)}'
         return web.HTTPFound(url)
 
@@ -189,7 +189,7 @@ class Youtube(RedirectCommand):
         'yt',
     ]
 
-    def __call__(self, args, request):
+    async def __call__(self, args, request):
         return web.Response(text='youtube feature to be added')
 
 
@@ -204,5 +204,5 @@ class ShellCommand(Command, ShlexCommandMixin):
         peername = request.transport.get_extra_info('peername')
         print(peername)
 
-    def call(self, query: List[str], request):
+    async def call(self, query: List[str], request):
         pass
