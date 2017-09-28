@@ -1,5 +1,7 @@
 import importlib
 import logging
+from typing import Any
+
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
@@ -8,7 +10,7 @@ from .db.common import create_tables
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+Base: Any = declarative_base()
 
 
 class HistoryItem(Base):

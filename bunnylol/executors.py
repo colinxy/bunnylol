@@ -9,8 +9,4 @@ def execute_query(query: str, request):
         return redirect_help(request)
 
     cmd = resolve_command(query)
-
-    cmd.pre_call_hook(request)
-    result = cmd(query, request)
-    cmd.post_call_hook(request)
-    return result
+    return cmd(query, request)

@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional, Type, TypeVar  # noqa
+from typing import Dict, List, Optional, Type, TypeVar, Union  # noqa
 import shlex
 from urllib.parse import quote as url_quote
 
@@ -14,10 +14,10 @@ Cmd = TypeVar('Cmd', bound='Command')
 CmdType = Type[Cmd]
 
 
-def resolve_command(query: str, **params) -> Cmd:
+def resolve_command(query: str, **params) -> Union['Command', 'CommandMixin']:
     cmd_name, _ = split2(query)
     if not cmd_name:
-        return Help
+        return Help()
 
     cmd_class = Command.from_name(cmd_name)
     if not cmd_class:
@@ -55,30 +55,39 @@ class Command:
         if getattr(cls, 'make_default', False):
             Command._default_cmd = cls
 
-    def __init__(self, **kwargs):
-        for key, val in kwargs.items():
-            setattr(self, key, val)
-
-    def pre_call_hook(self, request, *args, **kwargs):
-        # as a result, non abstract commands should not have
-        # `Command' in the class name, e.g. Help, not HelpCommand
-        request['cmd'] = self.__class__.__name__.lower()
-
-    def post_call_hook(self, request, *args, **kwargs):
-        pass
+    def __call__(self, query, request):
+        raise NotImplementedError
 
 
 class CommandMixin:
 
     def call(self, query, request):
-        raise NotImplemented
+        raise NotImplementedError
 
     def parse(self, query: str, request):
-        raise NotImplemented
+        raise NotImplementedError
 
     def __call__(self, query: str, request):
-        query = self.parse(query, request)
-        return self.call(query, request)
+        self.pre_call_hook(request)
+        try:
+            query = self.parse(query, request)
+            result = self.call(query, request)
+        finally:
+            self.post_call_hook(request)
+
+        return result
+
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            setattr(self, key, val)
+
+    def pre_call_hook(self, request):
+        # by convention, non abstract commands should not have
+        # `Command' in the class name, e.g. Help, not HelpCommand
+        request['cmd'] = self.__class__.__name__.lower()
+
+    def post_call_hook(self, request):
+        pass
 
 
 class RawCommandMixin(CommandMixin):
@@ -156,7 +165,10 @@ class Google(RedirectCommand):
     aliases = [
         'google',
         'g',
+        'go',
         'goo',
+        'goog',
+        'googl',
     ]
     make_default = True
 
