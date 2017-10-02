@@ -1,14 +1,18 @@
 # async adaptor for sqlite, not really async
+# TODO: below implementation is so ugly, rewrite new package as aiosqlite
+
 import sqlalchemy as sa
 from sqlalchemy.engine import Engine, Connection
 
 
-class aiter:
+class _aiter:
     def __init__(self, iterable):
-        self.iterable = iterable
+        self.iterable = iter(iterable)
+
+    def __await__(self):
+        return iter([])
 
     def __aiter__(self):
-        self.iterable = iter(self.iterable)
         return self
 
     async def __anext__(self):
@@ -27,9 +31,9 @@ class AioEngine(Engine):
     def release(self, conn):
         pass
 
-    async def execute(self, *args, **kwargs):
+    def execute(self, *args, **kwargs):
         result = super().execute(*args, **kwargs)
-        return aiter(result)
+        return _aiter(result)
 
     def close(self):
         return super().dispose()
@@ -48,10 +52,10 @@ class AioEngine(Engine):
 
 
 class AioConnection(Connection):
-    async def execute(self, *args, **kwargs):
+    def execute(self, *args, **kwargs):
         # TODO: put context manager around connection
         result = super().execute(*args, **kwargs)
-        return aiter(result)
+        return _aiter(result)
 
     async def __aenter__(self):
         return super().__enter__()

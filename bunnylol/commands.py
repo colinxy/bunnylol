@@ -4,8 +4,11 @@ import shlex
 from urllib.parse import quote as url_quote
 
 from aiohttp import web
+from tabulate import tabulate
 
-from .helpers import redirect_help, redirect_to, split2
+from .helpers import redirect_help, split2
+from .history import select_history
+from .database import history_tbl
 
 logger = logging.getLogger(__name__)
 
@@ -143,14 +146,21 @@ class Help(Command, RawCommandMixin):
         })
 
 
-class History(Command, RawCommandMixin):
+class History(Command, SplitCommandMixin):
     aliases = [
         'history',
         'hist',
     ]
 
-    async def call(self, query, request):
-        return redirect_to('history', request)
+    async def call(self, query: List[str], request):
+        history = await select_history(request)
+        return web.Response(text=tabulate(
+            history,
+            headers=[
+                col.name for col in history_tbl.columns
+            ],
+            tablefmt='simple',
+        ))
 
 
 class RedirectCommand(Command):
