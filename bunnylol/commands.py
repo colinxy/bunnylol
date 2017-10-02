@@ -14,10 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 Cmd = TypeVar('Cmd', bound='Command')
-CmdType = Type[Cmd]
+CmdMixin = TypeVar('CmdMixin', bound='CommandMixin')
+CmdType = Type[Union[Cmd, CmdMixin]]
 
 
-def resolve_command(query: str, **params) -> Union['Command', 'CommandMixin']:
+def resolve_command(query: str, **params) -> 'CommandMixin':
     cmd_name, _ = split2(query)
     if not cmd_name:
         return Help()
@@ -37,6 +38,35 @@ async def execute_query(query: str, request):
 
     cmd = resolve_command(query)
     return await cmd(query, request)
+
+
+class Command:
+    aliases: List[str] = []
+    _commands: List[CmdType] = []
+    _command_map: Dict[str, CmdType] = {}
+    _default_cmd: Optional[CmdType] = None
+
+    @classmethod
+    def from_name(cls, name):
+        cmd = cls._command_map.get(name)
+        if cmd:
+            return cmd
+
+    @classmethod
+    def fallback(cls):
+        if cls._default_cmd:
+            return cls._default_cmd
+        return Help
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        Command._commands.append(cls)
+        _cmd_map = Command._command_map
+        for alias in getattr(cls, 'aliases', []):
+            _cmd_map[alias] = cls
+
+        if getattr(cls, 'make_default', False):
+            Command._default_cmd = cls
 
 
 class CommandMixin:
@@ -71,35 +101,6 @@ class CommandMixin:
         pass
 
 
-class Command(CommandMixin):
-    aliases: List[str] = []
-    _commands: List[CmdType] = []
-    _command_map: Dict[str, CmdType] = {}
-    _default_cmd: Optional[CmdType] = None
-
-    @classmethod
-    def from_name(cls, name):
-        cmd = cls._command_map.get(name)
-        if cmd:
-            return cmd
-
-    @classmethod
-    def fallback(cls):
-        if cls._default_cmd:
-            return cls._default_cmd
-        return Help
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        Command._commands.append(cls)
-        _cmd_map = Command._command_map
-        for alias in getattr(cls, 'aliases', []):
-            _cmd_map[alias] = cls
-
-        if getattr(cls, 'make_default', False):
-            Command._default_cmd = cls
-
-
 class RawCommandMixin(CommandMixin):
 
     def parse(self, query: str, request) -> str:
@@ -128,8 +129,8 @@ class DNT(Command, Split2CommandMixin):
     """Do not track"""
     aliases = ['dnt']
 
-    async def call(self, query: Tuple[str, str], request):
-        _, query = query
+    async def call(self, query_: Tuple[str, str], request):
+        _, query = query_
         return await execute_query(query, request)
 
 
@@ -222,6 +223,7 @@ class Youtube(RedirectCommand):
 
 class ShellCommand(Command, ShlexCommandMixin):
     localhost_only = True
+    # TODO
 
     def check_remote(self, request):
         """
