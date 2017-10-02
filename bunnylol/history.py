@@ -1,10 +1,11 @@
-from aiohttp import web
-
 from .database import history_tbl
+from .helpers import redirect_to
 
 
 async def history(request):
-    return web.Response(text='history')
+    return redirect_to('query', request, query={
+        'q': 'history',
+    })
 
 
 async def select_history(request):

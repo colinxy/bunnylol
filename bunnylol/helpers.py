@@ -22,4 +22,6 @@ def redirect_help(request, query=None):
 
 
 async def help(request):
-    return web.Response(text='help')
+    return redirect_to('query', request, query={
+        'q': 'help',
+    })

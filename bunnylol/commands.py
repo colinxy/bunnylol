@@ -43,8 +43,15 @@ async def execute_query(query: str, request):
 class Command:
     aliases: List[str] = []
     _commands: List[CmdType] = []
-    _command_map: Dict[str, CmdType] = {}
+    _command_map: Dict[str, CmdType] = {}  # reverse map
     _default_cmd: Optional[CmdType] = None
+
+    @classmethod
+    def command_map(cls):
+        cmd_map = {}
+        for alias, cmd in cls._command_map.items():
+            cmd_map.setdefault(cmd, []).append(alias)
+        return cmd_map
 
     @classmethod
     def from_name(cls, name):
@@ -95,10 +102,14 @@ class CommandMixin:
         # by convention, non abstract commands should not have
         # `Command' in the class name, e.g. Help, not HelpCommand
         if not request.get('cmd'):
-            request['cmd'] = self.__class__.__name__.lower()
+            request['cmd'] = self.__class__.__name__
 
     async def post_call_hook(self, request):
         pass
+
+    @classmethod
+    def doc(cls):
+        return f'{cls.__name__} Command'
 
 
 class RawCommandMixin(CommandMixin):
@@ -116,7 +127,16 @@ class SplitCommandMixin(CommandMixin):
 class Split2CommandMixin(CommandMixin):
 
     def parse(self, query: str, request) -> Tuple[str, str]:
-        return split2(query)
+        if getattr(self, 'skip_first', False):
+            logger.debug(f'Skipping first argument of {query}')
+            cmd_name, query = split2(query)
+            if not cmd_name:
+                raise redirect_help(request, query={
+                    'cmd': self.__class__.__name__,
+                    'q': query,
+                })
+
+        return query
 
 
 class ShlexCommandMixin(CommandMixin):
@@ -134,17 +154,34 @@ class DNT(Command, Split2CommandMixin):
         return await execute_query(query, request)
 
 
+class List_(Command, RawCommandMixin):
+    aliases = [
+        'list',
+        'l',
+    ]
+
+    async def call(self, _query, request):
+        cmd_list = [
+            (cmd.__name__, ', '.join(aliases), cmd.doc())
+            for cmd, aliases in Command.command_map().items()
+        ]
+        return web.Response(text=tabulate(
+            cmd_list,
+            headers=['Command', 'Aliases', 'Documentation'],
+        ))
+
+
 class Help(Command, RawCommandMixin):
     aliases = [
         'help',
         'h',
         'he',
+        'hel',
     ]
 
     async def call(self, query, request):
-        return redirect_help(request, query={
-            'q': query,
-        })
+        list_cmd = List_()
+        return await list_cmd(query, request)
 
 
 class History(Command, SplitCommandMixin):
@@ -164,23 +201,11 @@ class History(Command, SplitCommandMixin):
         ))
 
 
-class RedirectCommand(Command):
+class RedirectCommand(Command, Split2CommandMixin):
     query_key = 'q'
 
     def __init__(self, *, skip_first=True):
         self.skip_first = skip_first
-
-    def parse(self, query: str, request):
-        if self.skip_first:
-            logger.debug(f'Skipping first argument of {query}')
-            cmd_name, query = split2(query)
-            if not cmd_name:
-                raise redirect_help(request, query={
-                    'cmd': self.__class__.__name__.lower(),
-                    'q': query,
-                })
-
-        return query
 
     async def call(self, query, _request):
         url = f'{self.base_url}?{self.query_key}={url_quote(query)}'
