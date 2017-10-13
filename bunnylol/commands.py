@@ -192,8 +192,15 @@ class History(Command, SplitCommandMixin):
 
     async def call(self, query: List[str], request):
         history = await select_history(request)
+        history_tabulate = [
+            [
+                str(col)[:80] + ('...' if str(col)[80:] else '')
+                for col in row
+            ]
+            for row in history
+        ]
         return web.Response(text=tabulate(
-            history,
+            history_tabulate,
             headers=[
                 col.name for col in history_tbl.columns
             ],
