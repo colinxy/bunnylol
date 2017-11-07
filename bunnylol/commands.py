@@ -127,8 +127,11 @@ class SplitCommandMixin(CommandMixin):
 class Split2CommandMixin(CommandMixin):
 
     def parse(self, query: str, request) -> Tuple[str, str]:
+        cmd_name = ''
         if getattr(self, 'skip_first', False):
-            logger.debug(f'Skipping first argument of {query}')
+            logger.debug(
+                f'Skipping first argument of {query} '
+                '(first argument as command)')
             cmd_name, query = split2(query)
             if not cmd_name:
                 raise redirect_help(request, query={
@@ -136,7 +139,7 @@ class Split2CommandMixin(CommandMixin):
                     'q': query,
                 })
 
-        return query
+        return cmd_name, query
 
 
 class ShlexCommandMixin(CommandMixin):
@@ -148,6 +151,9 @@ class ShlexCommandMixin(CommandMixin):
 class DNT(Command, Split2CommandMixin):
     """Do not track"""
     aliases = ['dnt']
+
+    def __init__(self, *, skip_first=True):
+        self.skip_first = skip_first
 
     async def call(self, query_: Tuple[str, str], request):
         _, query = query_
@@ -211,10 +217,13 @@ class History(Command, SplitCommandMixin):
 class RedirectCommand(Command, Split2CommandMixin):
     query_key = 'q'
 
+    base_url = ''
+
     def __init__(self, *, skip_first=True):
         self.skip_first = skip_first
 
-    async def call(self, query, _request):
+    async def call(self, query_: Tuple[str, str], _request):
+        _, query = query_
         url = f'{self.base_url}?{self.query_key}={url_quote(query)}'
         return web.HTTPFound(url)
 
