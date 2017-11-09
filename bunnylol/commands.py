@@ -198,9 +198,10 @@ class History(Command, SplitCommandMixin):
 
     async def call(self, query: List[str], request):
         history = await select_history(request)
+        # TODO: respect timezone in time column
         history_tabulate = [
             [
-                str(col)[:80] + ('...' if str(col)[80:] else '')
+                str(col)[:80] + ('...' if len(str(col)) > 80 else '')
                 for col in row
             ]
             for row in history
@@ -212,6 +213,15 @@ class History(Command, SplitCommandMixin):
             ],
             tablefmt='simple',
         ))
+
+
+class Last(Command, SplitCommandMixin):
+    aliases = [
+        'last',
+    ]
+
+    async def call(self, query: List[str], request):
+        return web.Response(text='last feature to be added')
 
 
 class RedirectCommand(Command, Split2CommandMixin):
@@ -232,7 +242,6 @@ class Google(RedirectCommand):
     aliases = [
         'google',
         'g',
-        'go',
         'goo',
         'goog',
         'googl',
@@ -260,6 +269,16 @@ class Youtube(RedirectCommand):
 
     async def __call__(self, args, request):
         return web.Response(text='youtube feature to be added')
+
+
+class WolframAlpha(RedirectCommand):
+    aliases = [
+        'wolframalpha',
+        'wolfram',
+    ]
+
+    base_url = 'https://www.wolframalpha.com/input/'
+    query_key = 'i'
 
 
 class ShellCommand(Command, ShlexCommandMixin):
