@@ -1,3 +1,5 @@
+import calendar
+import datetime
 import logging
 from typing import Dict, List, Optional, Type, TypeVar, Tuple, Union  # noqa
 import shlex
@@ -121,6 +123,8 @@ class RawCommandMixin(CommandMixin):
 class SplitCommandMixin(CommandMixin):
 
     def parse(self, query: str, request) -> List[str]:
+        if getattr(self, 'skip_first', False):
+            return query.split()[1:]
         return query.split()
 
 
@@ -220,21 +224,66 @@ class Last(Command, SplitCommandMixin):
         'last',
     ]
 
+    skip_first = True
+
     async def call(self, query: List[str], request):
         return web.Response(text='last feature to be added')
 
 
-class RedirectCommand(Command, Split2CommandMixin):
-    query_key = 'q'
+class Calendar(Command, SplitCommandMixin):
+    aliases = [
+        'calendar',
+        'cal',
+    ]
 
-    base_url = ''
+    skip_first = True
+    cal = calendar.TextCalendar(firstweekday=calendar.SUNDAY)
+
+    async def call(self, query: List[str], request):
+        today = datetime.date.today()
+        year = today.year
+        month = today.month
+        mode = 'default'
+
+        # TODO: reimplement using ply/pyparsing/lark
+        # funcparserlib, lrparsing looks more promising
+
+        for q in query:
+            try:
+                arg = int(q)
+                if 1 <= arg <= 12:
+                    month = arg
+                    mode = 'month'
+                elif 0 <= arg <= 99:
+                    year = 2000 + arg
+                elif datetime.MINYEAR <= arg <= datetime.MAXYEAR:
+                    year = arg
+                    if mode == 'default':
+                        mode = 'year'
+                else:
+                    mode = ''
+            except ValueError:
+                mode = ''
+
+        if mode == 'month' or mode == 'default':
+            cal_str = self.cal.formatmonth(year, month)
+        elif mode == 'year':
+            cal_str = self.cal.formatyear(year)
+        else:
+            cal_str = f'cannot understand query: {query}'
+
+        return web.Response(text=cal_str)
+
+
+class RedirectCommand(Command, Split2CommandMixin):
+    prefix_url = '/help?q='
 
     def __init__(self, *, skip_first=True):
         self.skip_first = skip_first
 
     async def call(self, query_: Tuple[str, str], _request):
         _, query = query_
-        url = f'{self.base_url}?{self.query_key}={url_quote(query)}'
+        url = f'{self.prefix_url}{url_quote(query)}'
         return web.HTTPFound(url)
 
 
@@ -248,7 +297,17 @@ class Google(RedirectCommand):
     ]
     make_default = True
 
-    base_url = 'https://www.google.com/search'
+    prefix_url = 'https://www.google.com/search?q='
+
+
+class Definition(RedirectCommand):
+    aliases = [
+        'definition',
+        'define',
+        'def',
+    ]
+
+    prefix_url = Google.prefix_url + 'definition+'
 
 
 class Duckduckgo(RedirectCommand):
@@ -258,7 +317,7 @@ class Duckduckgo(RedirectCommand):
         'dd',
     ]
 
-    base_url = 'https://duckduckgo.com/'
+    prefix_url = 'https://duckduckgo.com/?q='
 
 
 class Youtube(RedirectCommand):
@@ -275,10 +334,12 @@ class WolframAlpha(RedirectCommand):
     aliases = [
         'wolframalpha',
         'wolfram',
+        'alpha',
+        'wa',
+        'wo',
     ]
 
-    base_url = 'https://www.wolframalpha.com/input/'
-    query_key = 'i'
+    prefix_url = 'https://www.wolframalpha.com/input/?i='
 
 
 class ShellCommand(Command, ShlexCommandMixin):
